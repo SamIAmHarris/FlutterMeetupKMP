@@ -14,80 +14,46 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
 import com.milo.fluttermeetup.SpaceXSDK
 import com.milo.fluttermeetup.cache.DatabaseDriverFactory
 import com.milo.fluttermeetup.entity.RocketLaunch
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewModelScope
 
 class MainActivity : ComponentActivity() {
-    private val mainScope = MainScope()
 
     private val sdk = SpaceXSDK(DatabaseDriverFactory(this))
+    private val viewModel = LaunchesViewModel(sdk)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val launchesContent = remember { mutableStateOf<Resource>(Resource.Uninitialized) }
-
-            fun displayLaunches(needReload: Boolean) {
-                mainScope.launch {
-                    kotlin.runCatching {
-                        launchesContent.value = Resource.Loading
-                        delay(3000)
-                        sdk.getLaunches(needReload)
-                    }.onSuccess {
-                        launchesContent.value = Resource.Content(it)
-                    }.onFailure {
-                        launchesContent.value = Resource.Error
-                    }
-                }
-            }
+            val state = viewModel.state
 
             MyApplicationTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color.White
                 ) {
-
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        when (launchesContent.value) {
-                            Resource.Uninitialized ->
-                                Button(onClick = { displayLaunches(false) }) {
-                                    Text(text = "Get Launches", color = Color.White)
-                                }
-
-                            is Resource.Content -> {
-                                val launches = (launchesContent.value as Resource.Content).launches
-                                Column {
-                                    Text(
-                                        text = "SpaceX Launches",
-                                        fontSize = 44.sp,
-                                        color = Color.Black
-                                    )
-                                    LazyColumn {
-                                        items(launches.size) { index ->
-                                            val launch = launches[index]
-                                            LaunchRow(launch)
-                                        }
-                                    }
-                                }
-                            }
-
-                            Resource.Error -> Text("Failed to load launches")
+                        when (state) {
+                            Resource.Uninitialized -> StartButton(viewModel::retrieveLaunches)
+                            is Resource.Content -> LaunchesUI(launches = state.launches)
+                            Resource.Error -> Text("Failed to load launches...")
                             Resource.Loading -> CircularProgressIndicator()
                         }
                     }
@@ -95,11 +61,26 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
 
-    override fun onDestroy() {
-        super.onDestroy()
-        mainScope.cancel()
+class LaunchesViewModel(private val sdk: SpaceXSDK) : ViewModel() {
+    var state by mutableStateOf<Resource>(Resource.Uninitialized)
+        private set
+
+    fun retrieveLaunches() {
+        viewModelScope.launch {
+            kotlin.runCatching {
+                state = Resource.Loading
+                delay(3000)
+                sdk.getLaunches(true)
+            }.onSuccess {
+                state = Resource.Content(it)
+            }.onFailure {
+                state = Resource.Error
+            }
+        }
     }
+
 }
 
 sealed class Resource {
@@ -109,13 +90,28 @@ sealed class Resource {
     data class Content(val launches: List<RocketLaunch>) : Resource()
 }
 
+
+//region UI
+@Composable
+fun LaunchesUI(launches: List<RocketLaunch>) {
+    Column {
+        Text(
+            text = "SpaceX Launches",
+            fontSize = 44.sp,
+            color = Color.Black
+        )
+        LazyColumn {
+            items(launches.size) { index ->
+                val launch = launches[index]
+                LaunchRow(launch)
+            }
+        }
+    }
+}
+
 @Composable
 fun LaunchRow(launch: RocketLaunch) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = Color.White)
-    ) {
+    Box {
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
@@ -126,39 +122,31 @@ fun LaunchRow(launch: RocketLaunch) {
             verticalArrangement = Arrangement.Center
         ) {
             Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Launch name ${launch.missionName}",
-                fontSize = 20.sp,
-                color = Color.Black
-            )
+            LaunchText(text = "Launch name ${launch.missionName}")
             val success = launch.launchSuccess ?: false
-
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = if (success) "Unsuccessful" else "Successful",
-                color = if (success) Color.Green else Color.Red,
-                fontSize = 18.sp
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Launch year: ${launch.launchYear}",
-                color = Color.Black,
-                fontSize = 18.sp
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Launch details: ${launch.details}",
-                color = Color.Black,
-                fontSize = 18.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
+            LaunchText(text = if (success) "Unsuccessful" else "Successful")
+            LaunchText(text = "Launch year: ${launch.launchYear}")
+            LaunchText(text = "Launch details: ${launch.details}")
             Divider(color = Color.Black)
         }
     }
 }
+
+@Composable
+fun StartButton(onClick: () -> Unit) {
+    Button(onClick = onClick) {
+        Text(text = "Get Launches", color = Color.White)
+    }
+}
+
+@Composable
+fun LaunchText(text: String) {
+    Text(
+        text = text,
+        color = Color.Black,
+        fontSize = 18.sp
+    )
+}
+//endregion
 
 
