@@ -20,16 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.milo.fluttermeetup.SpaceXSDK
-import com.milo.fluttermeetup.cache.DatabaseDriverFactory
 import com.milo.fluttermeetup.entity.RocketLaunch
 import com.milo.fluttermeetup.DualViewModel
 import com.milo.fluttermeetup.Resource
 
 class MainActivity : ComponentActivity() {
 
-    private val sdk = SpaceXSDK(DatabaseDriverFactory(this))
-    private val viewModel = DualViewModel(sdk)
+    private val viewModel = DualViewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -8,20 +8,28 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class DualViewModel(private val sdk: SpaceXSDK) : KMMViewModel() {
+class DualViewModel() : KMMViewModel() {
+
+    private val sdk: SpaceXSDK = SpaceXSDK()
+
     private val _launchesResource =
         MutableStateFlow<Resource>(viewModelScope, Resource.Uninitialized)
     val launchesResource = _launchesResource.asStateFlow()
+
+    init {
+        retrieveLaunches()
+    }
 
     fun retrieveLaunches() {
         viewModelScope.coroutineScope.launch {
             kotlin.runCatching {
                 _launchesResource.value = Resource.Loading
                 delay(3000)
-                sdk.getLaunches(true)
+                sdk.getLaunches()
             }.onSuccess {
                 _launchesResource.value = Resource.Content(it)
             }.onFailure {
+                println(it.message)
                 _launchesResource.value = Resource.Error
             }
         }
