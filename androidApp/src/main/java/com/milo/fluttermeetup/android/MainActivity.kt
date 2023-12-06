@@ -14,32 +14,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import com.milo.fluttermeetup.SpaceXSDK
 import com.milo.fluttermeetup.cache.DatabaseDriverFactory
 import com.milo.fluttermeetup.entity.RocketLaunch
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.setValue
-import androidx.lifecycle.viewModelScope
+import com.milo.fluttermeetup.DualViewModel
+import com.milo.fluttermeetup.Resource
 
 class MainActivity : ComponentActivity() {
 
     private val sdk = SpaceXSDK(DatabaseDriverFactory(this))
-    private val viewModel = LaunchesViewModel(sdk)
+    private val viewModel = DualViewModel(sdk)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            val state = viewModel.state
+
+            val state = viewModel.launchesResource.collectAsState()
 
             MyApplicationTheme {
                 Surface(
@@ -50,9 +47,9 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        when (state) {
+                        when (state.value) {
                             Resource.Uninitialized -> StartButton(viewModel::retrieveLaunches)
-                            is Resource.Content -> LaunchesUI(launches = state.launches)
+                            is Resource.Content -> LaunchesUI(launches = (state.value as Resource.Content).launches)
                             Resource.Error -> Text("Failed to load launches...")
                             Resource.Loading -> CircularProgressIndicator()
                         }
@@ -62,34 +59,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-class LaunchesViewModel(private val sdk: SpaceXSDK) : ViewModel() {
-    var state by mutableStateOf<Resource>(Resource.Uninitialized)
-        private set
-
-    fun retrieveLaunches() {
-        viewModelScope.launch {
-            kotlin.runCatching {
-                state = Resource.Loading
-                delay(3000)
-                sdk.getLaunches(true)
-            }.onSuccess {
-                state = Resource.Content(it)
-            }.onFailure {
-                state = Resource.Error
-            }
-        }
-    }
-
-}
-
-sealed class Resource {
-    data object Uninitialized : Resource()
-    data object Loading : Resource()
-    data object Error : Resource()
-    data class Content(val launches: List<RocketLaunch>) : Resource()
-}
-
 
 //region UI
 @Composable
