@@ -1,3 +1,4 @@
+@Suppress("DSL_SCOPE_VIOLATION")
 plugins {
     kotlin("plugin.serialization") version "1.9.20"
     alias(libs.plugins.kotlinMultiplatform)
