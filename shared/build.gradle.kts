@@ -10,7 +10,7 @@ kotlin {
     androidTarget {
         compilations.all {
             kotlinOptions {
-                jvmTarget = "1.8"
+                jvmTarget = "17"
             }
         }
     }
@@ -32,6 +32,9 @@ kotlin {
     val dateTimeVersion = "0.4.0"
 
     sourceSets {
+        all {
+            languageSettings.optIn("kotlinx.cinterop.ExperimentalForeignApi")
+        }
         commonMain.dependencies {
             //put your multiplatform dependencies here
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
@@ -40,6 +43,8 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
             implementation("com.squareup.sqldelight:runtime:$sqlDelightVersion")
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:$dateTimeVersion")
+
+            api("com.rickclephas.kmm:kmm-viewmodel-core:1.0.0-ALPHA-16")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -62,6 +67,10 @@ android {
     compileSdk = 34
     defaultConfig {
         minSdk = 28
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 

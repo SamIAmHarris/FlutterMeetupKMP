@@ -1,63 +1,36 @@
 import SwiftUI
 import shared
+import KMMViewModelSwiftUI
 
-
-struct ContentView: View {
-  @ObservedObject private(set) var viewModel: ViewModel
-
+struct OtherContentView: View {
+    @StateViewModel var dualViewModel: DualViewModel = DualViewModel()
+    
     var body: some View {
         NavigationView {
             listView()
             .navigationBarTitle("SpaceX Launches")
             .navigationBarItems(trailing:
-                Button("Reload") {
-                    self.viewModel.loadLaunches(forceReload: true)
+                Button("Load Data") {
+                    self.dualViewModel.retrieveLaunches()
             })
         }
     }
-
+    
     private func listView() -> AnyView {
-        switch viewModel.launches {
-        case .loading:
+        
+        let resource : Resource = dualViewModel.launchesResource.value as! Resource
+        
+        if (resource is Resource.Loading) {
             return AnyView(Text("Loading...").multilineTextAlignment(.center))
-        case .result(let launches):
-            return AnyView(List(launches) { launch in
-                RocketLaunchRow(rocketLaunch: launch)
-            })
-        case .error(let description):
-            return AnyView(Text(description).multilineTextAlignment(.center))
-        }
-    }
-}
-
-extension ContentView {
-
-    enum LoadableLaunches {
-        case loading
-        case result([RocketLaunch])
-        case error(String)
-    }
-
-    @MainActor
-    class ViewModel: ObservableObject {
-        let sdk: SpaceXSDK
-        @Published var launches = LoadableLaunches.loading
-
-        init(sdk: SpaceXSDK) {
-            self.sdk = sdk
-            self.loadLaunches(forceReload: false)
-        }
-
-        func loadLaunches(forceReload: Bool) {
-            Task {
-                do {
-                    self.launches = .loading
-                    let launches = try await sdk.getLaunches(forceReload: forceReload)
-                    self.launches = .result(launches)
-                } catch {
-                    self.launches = .error(error.localizedDescription)
-                }
-            }
+        } else if (resource is Resource.Content) {
+            let content = resource as! Resource.Content
+            return AnyView(List(content.launches) { launch in
+                    RocketLaunchRow(rocketLaunch: launch)
+                })
+        } else if (resource is Resource.Error) {
+            return AnyView(Text("Failed to load data").multilineTextAlignment(.center))
+        } else {
+            return AnyView(Text("").multilineTextAlignment(.center))
         }
     }
 }
