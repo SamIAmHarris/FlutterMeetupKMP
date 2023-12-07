@@ -8,6 +8,6 @@ class SpaceXSDK {
 
     @Throws(Exception::class)
     suspend fun getLaunches(): List<RocketLaunch> {
-        return api.getAllLaunches()
+        return api.getAllLaunches().subList(0, 15)
     }
 }

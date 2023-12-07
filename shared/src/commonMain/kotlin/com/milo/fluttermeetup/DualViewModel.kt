@@ -24,7 +24,7 @@ class DualViewModel() : KMMViewModel() {
         viewModelScope.coroutineScope.launch {
             kotlin.runCatching {
                 _launchesResource.value = Resource.Loading
-                delay(3000)
+                delay(1000)
                 sdk.getLaunches()
             }.onSuccess {
                 _launchesResource.value = Resource.Content(it)
